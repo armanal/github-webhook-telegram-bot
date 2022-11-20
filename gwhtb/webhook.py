@@ -145,11 +145,11 @@ EVENT_DESCRIPTIONS = {
 }
 
 FUNC_EVENT_FORMATS = {
-    "push": lambda data: "[{data[head_commit][committer][name]}]({data[sender][html_url]}) \
-pushed [{data[ref]}]({data[head_commit][url]}) in \
-[{data[repository][full_name]}]({data[repository][html_url]})"
+    "push": lambda data: f"[{data['head_commit']['committer']['name']}]({data['sender']['html_url']}) \
+pushed [{data['ref']}]({data['head_commit']['url']}) in \
+[{data['repository']['full_name']}]({data['repository']['html_url']})"
     + "\n\n".join(
-        ["__commit message__: \n{commit[message]}" for commit in data["commits"]]
+        [f"__commit message__: \n{commit['message']}" for commit in data["commits"]]
     ),
 }
 
