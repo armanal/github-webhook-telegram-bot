@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+    gwhtb:
+        build: 
+          dockerfile: ./docker/Dockerfile
+          context: ./
+        image: gwhtb:v1
+        stdin_open: true # docker run -i
+        tty: true        # docker run -t
+        # mem_limit: 512M
+        volumes:
+          - ./:/usr/src/app
+          - /:/opt/ext
+        working_dir: /usr/src/app
+        shm_size: '256mb'
+        ports:
+          - 4560:4560
+        networks:
+          - gwhtb_mongo_net
+        env_file:
+          - ./.env
+        # command: uvicorn runserver:app --port 8000 --host 0.0.0.0 --workers 2
+        # restart: unless-stopped
+        depends_on:
+          - mongodb
+          - mongo-express
+
+    mongodb:
+        image: mongo:4.4.6
+        mem_limit: 256M
+        ports:
+          - 27017:27017
+        environment:
+          MONGO_INITDB_DATABASE: gwhtb
+          MONGO_INITDB_ROOT_USERNAME: 'admin'
+          MONGO_INITDB_ROOT_PASSWORD: 'admin'
+        volumes:
+          # seeding scripts
+          # - ./mongo-entrypoint:/docker-entrypoint-initdb.d
+          # named volumes
+          - ./data/db:/data/db
+          - ./data/configdb:/data/configdb
+        networks:
+          - gwhtb_mongo_net
+
+    mongo-express:
+        image: mongo-express
+        ports:
+          - 8081:8081
+        environment:
+          ME_CONFIG_MONGODB_SERVER: 'mongodb'
+          ME_CONFIG_MONGODB_PORT: '27017'
+          ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
+          ME_CONFIG_MONGODB_ADMINUSERNAME: 'admin'
+          ME_CONFIG_MONGODB_ADMINPASSWORD: 'admin'
+        networks:
+          - gwhtb_mongo_net
+        depends_on:
+          - mongodb
+
+networks:
+  gwhtb_mongo_net:
+    driver: bridge
