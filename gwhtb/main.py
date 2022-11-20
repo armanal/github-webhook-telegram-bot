@@ -76,9 +76,21 @@ async def secret(update: Update, context: ContextTypes.DEFAULT_TYPE):
     secret.update()
 
     url = os.environ.get("URL", None)
+
+    """ 
+        In all other places characters 
+        '_', '*', '[', ']', '(', ')', '~', '`', '>', 
+        '#', '+', '-', '=', '|', '{', '}', '.', '!' 
+        must be escaped with the preceding character '\'.
+    """
     await update.message.reply_text(
-        f"Secret:\n{secret.secret}\n\n\
-Payload URL: \n{url}/github?identity={secret.secret}"
+        f"Secret:\n||{secret.secret}||\n\n\
+Payload URL: \n{url}/github?identity={secret.secret}".replace(
+            ".", "\."
+        ).replace(
+            "=", "\="
+        ),
+        parse_mode=telegram.constants.ParseMode.MARKDOWN_V2,
     )
 
 
@@ -93,7 +105,18 @@ async def send_github(secret_string, data, formatted_data):
     ), "set environment variable TOKEN to your telegram bot's token."
     bot = telegram.Bot(token=token)
 
-    await bot.send_message(chat_id=secret.chat_id, text=formatted_data)
+    try:
+        formatted = formatted_data.replace(".", "\.").replace("=", "\=")
+        await bot.send_message(
+            chat_id=secret.chat_id,
+            text=formatted,
+            parse_mode=telegram.constants.ParseMode.MARKDOWN_V2,
+        )
+    except:
+        await bot.send_message(
+            chat_id=secret.chat_id,
+            text=formatted_data,
+        )
 
 
 async def main() -> None:

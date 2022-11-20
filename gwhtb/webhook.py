@@ -134,8 +134,6 @@ EVENT_DESCRIPTIONS = {
     "pull_request_review_comment": "{comment[user][login]} {action} comment "
     "on pull #{pull_request[number]} in "
     "{repository[full_name]}",
-    "push": "[{commits[committer][name]}]({sender[html_url]}) pushed [{ref}]({commits[url]}) in [{repository[full_name]}]({repository[html_url]})\
-\ncommit message: \n{commits[message]}",
     "release": "{release[author][login]} {action} {release[tag_name]} in "
     "{repository[full_name]}",
     "repository": "{sender[login]} {action} repository " "{repository[full_name]}",
@@ -146,10 +144,21 @@ EVENT_DESCRIPTIONS = {
     "watch": "{sender[login]} {action} watch in repository " "{repository[full_name]}",
 }
 
+FUNC_EVENT_FORMATS = {
+    "push": lambda data: "[{data[head_commit][committer][name]}]({data[sender][html_url]}) \
+pushed [{data[ref]}]({data[head_commit][url]}) in \
+[{data[repository][full_name]}]({data[repository][html_url]})"
+    + "\n\n".join(
+        ["__commit message__: \n{commit[message]}" for commit in data["commits"]]
+    ),
+}
+
 
 def _format_event(event_type, data):
     try:
-        return EVENT_DESCRIPTIONS[event_type].format(**data)
+        if event_type in EVENT_DESCRIPTIONS.keys():
+            return EVENT_DESCRIPTIONS[event_type].format(**data)
+        return FUNC_EVENT_FORMATS[event_type](data)
     except KeyError:
         return event_type
 
