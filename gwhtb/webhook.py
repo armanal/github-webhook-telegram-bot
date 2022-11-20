@@ -4,6 +4,7 @@ import hmac
 import logging
 import json
 import six
+from tools import markdown_char_escape as mksc
 
 
 class Webhook(object):
@@ -145,11 +146,17 @@ EVENT_DESCRIPTIONS = {
 }
 
 FUNC_EVENT_FORMATS = {
-    "push": lambda data: f"[{data['head_commit']['committer']['name']}]({data['sender']['html_url']}) \
-pushed [{data['ref']}]({data['head_commit']['url']}) in \
-[{data['repository']['full_name']}]({data['repository']['html_url']})"
-    + "\n\n".join(
-        [f"__commit message__: \n{commit['message']}" for commit in data["commits"]]
+    "push": (
+        lambda data: f"\
+[{mksc(data['repository']['full_name'])}]({mksc(data['repository']['html_url'])}) \-\>\n\
+[{mksc(data['head_commit']['committer']['name'])}]({mksc(data['sender']['html_url'])}) \
+pushed [{mksc(data['ref'])}]({mksc(data['head_commit']['url'])})"
+        + "\n\n".join(
+            [
+                f"__commit message__: \n{mksc(commit['message'])}"
+                for commit in data["commits"]
+            ]
+        )
     ),
 }
 
