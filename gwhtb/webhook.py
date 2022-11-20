@@ -147,13 +147,13 @@ EVENT_DESCRIPTIONS = {
 
 FUNC_EVENT_FORMATS = {
     "push": (
-        lambda data: f"\
-[{mksc(data['repository']['full_name'])}]({mksc(data['repository']['html_url'])}) \-\>\n\
+        lambda data: f"In repo:\n\
+[{mksc(data['repository']['full_name'])}]({mksc(data['repository']['html_url'])}) \n\
 [{mksc(data['head_commit']['committer']['name'])}]({mksc(data['sender']['html_url'])}) \
-pushed [{mksc(data['ref'])}]({mksc(data['head_commit']['url'])})"
+*pushed* [{mksc(data['ref'])}]({mksc(data['head_commit']['url'])})\n\n"
         + "\n\n".join(
             [
-                f"__commit message__: \n{mksc(commit['message'])}"
+                f"_*commit message*_: \n`{mksc(commit['message'])}`"
                 for commit in data["commits"]
             ]
         )
