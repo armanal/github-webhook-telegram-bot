@@ -53,8 +53,10 @@ def extract_message_fields(update: Update):
 
 
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    help_message = "This is how you can use this bot"
-    await update.message.reply_text(help_message)
+    help_message = "This is how you can use this bot\. _italic \*text_"
+    await update.message.reply_text(
+        help_message, parse_mode=telegram.constants.ParseMode.MARKDOWN_V2
+    )
 
 
 async def secret(update: Update, context: ContextTypes.DEFAULT_TYPE):
