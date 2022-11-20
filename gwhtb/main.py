@@ -99,7 +99,7 @@ async def send_github(secret_string, data, formatted_data):
     await bot.send_message(
         chat_id=secret.chat_id,
         text=formatted_data,
-        parse_mode=telegram.constants.ParseMode.HTML,
+        parse_mode=telegram.constants.ParseMode.MARKDOWN_V2,
     )
 
 
