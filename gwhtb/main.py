@@ -2,7 +2,6 @@
 from crypt import methods
 import os
 import logging
-import secrets
 import asyncio
 
 from telegram import __version__ as TG_VER
@@ -25,6 +24,7 @@ from telegram.ext import (
     Application,
     CommandHandler,
     ContextTypes,
+    CallbackQueryHandler,
 )
 
 import webhook
@@ -34,7 +34,7 @@ from asgiref.wsgi import WsgiToAsgi
 from flask import Flask, request, Response
 
 import db
-from tools import markdown_char_escape
+import telegram_menu
 
 # Enable logging
 logging.basicConfig(
@@ -43,47 +43,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def extract_message_fields(update: Update):
-    return {
-        "user_id": str(update.message.from_user.id),
-        "chat_type": update.message.chat.type,
-        "chat_id": str(update.message.chat.id),
-    }
-
-
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_message = "This is how you can use this bot\. _italic \*text_"
     await update.message.reply_text(
         help_message, parse_mode=telegram.constants.ParseMode.MARKDOWN_V2
-    )
-
-
-async def secret(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    fields = extract_message_fields(update=update)
-    while True:
-        identity = secrets.token_hex(nbytes=20)
-        if db.Secret.get(identity=identity) is None:
-            break
-
-    secret = secrets.token_hex(nbytes=20)
-    secret = db.Secret(identity=identity, secret=secret, chat_id=fields["chat_id"])
-
-    user = db.User.get(telegram_id=fields["user_id"])
-    if user is None:
-        user = db.User(telegram_id=fields["user_id"])
-        user.save()
-
-    user.secrets.append(secret)
-
-    secret.user = user
-    secret.update()
-
-    url = os.environ.get("URL", None)
-
-    await update.message.reply_text(
-        f"Secret:\n||{markdown_char_escape(str(secret.secret))}||\n\n\
-Payload URL: \n{markdown_char_escape(url)}/github?identity\={markdown_char_escape(secret.identity)}",
-        parse_mode=telegram.constants.ParseMode.MARKDOWN_V2,
     )
 
 
@@ -126,7 +89,8 @@ async def main() -> None:
 
     # Add Handlers to application that will be used for handling updates
     application.add_handler(CommandHandler("start", help))
-    application.add_handler(CommandHandler("secret", secret))
+    application.add_handler(CommandHandler("menu", telegram_menu.init_menu))
+    application.add_handler(CallbackQueryHandler(telegram_menu.menu_router))
 
     # Run the bot until the user presses Ctrl-C
     # application.run_polling(poll_interval=2)
