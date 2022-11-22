@@ -19,6 +19,6 @@ def markdown_char_escape(string_to_scape: str) -> str:
         ".",
         "!",
     ]:
-        string_to_scape = string_to_scape.replace(char, f"\{char}")
+        string_to_scape = string_to_scape.replace(char, rf"\{char}")
 
     return string_to_scape
