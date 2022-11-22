@@ -30,4 +30,5 @@ ENV LANG C.UTF-8
 RUN pip install --no-cache-dir  python-telegram-bot[all] --pre
 RUN pip install --no-cache-dir  mongoengine \
 								flask \
-								six
+								six \
+								asgiref

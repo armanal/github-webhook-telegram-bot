@@ -123,12 +123,22 @@ async def secret(update: Update, context: ContextTypes.DEFAULT_TYPE, fields: dic
     secret.user = user
     secret.update()
 
+    keyboard = [
+        [
+            InlineKeyboardButton("back", callback_data="7917"),
+            InlineKeyboardButton("exit", callback_data="6491"),
+        ],
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     url = os.environ.get("URL", None)
 
     await reply_func(update)(
         f"Secret:\n||{markdown_char_escape(str(secret.secret))}||\n\n\
 Payload URL: \n{markdown_char_escape(url)}/github?identity\={markdown_char_escape(secret.identity)}",
         parse_mode=telegram.constants.ParseMode.MARKDOWN_V2,
+        reply_markup=reply_markup,
     )
 
 
@@ -160,9 +170,10 @@ async def my_secrets(update: Update, context: ContextTypes.DEFAULT_TYPE, fields:
 async def secrets_menu(
     update: Update, context: ContextTypes.DEFAULT_TYPE, fields: dict
 ):
+    secret = db.Secret.get(identity=fields["context"][0])
+    url = os.environ.get("URL", None)
     keyboard = [
         [
-            InlineKeyboardButton("info", callback_data=f"16336-{fields['context'][0]}"),
             InlineKeyboardButton(
                 "delete", callback_data=f"18787-{fields['context'][0]}"
             ),
@@ -175,18 +186,12 @@ async def secrets_menu(
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await reply_func(update=update)("Please choose:", reply_markup=reply_markup)
-
-
-async def secret_info(update: Update, context: ContextTypes.DEFAULT_TYPE, fields: dict):
-    secret = db.Secret.get(identity=fields["context"][0])
-    url = os.environ.get("URL", None)
-
-    await reply_func(update)(
+    await reply_func(update=update)(
         f"Secret:\n||{markdown_char_escape(str(secret.secret))}||\n\n\
 Repository: \n {markdown_char_escape(secret.repository)} \n\n\
 Payload URL: \n{markdown_char_escape(url)}/github?identity\={markdown_char_escape(secret.identity)}",
         parse_mode=telegram.constants.ParseMode.MARKDOWN_V2,
+        reply_markup=reply_markup,
     )
 
 
@@ -198,6 +203,16 @@ async def secret_delete(
     repository = secret.repository
     secret_srt = secret.secret
     secret.delete()
+
+    keyboard = [
+        [
+            InlineKeyboardButton("back", callback_data="20356"),
+            InlineKeyboardButton("exit", callback_data="6491"),
+        ],
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     url = os.environ.get("URL", None)
 
     await reply_func(update)(
@@ -206,6 +221,7 @@ Secret:\n||{markdown_char_escape(secret_srt)}||\n\n\
 Repository: \n {markdown_char_escape(repository)} \n\n\
 Payload URL: \n{markdown_char_escape(url)}/github?identity\={markdown_char_escape(identity)}",
         parse_mode=telegram.constants.ParseMode.MARKDOWN_V2,
+        reply_markup=reply_markup,
     )
 
 
@@ -218,7 +234,6 @@ state_dict = {
     "30564": secret,
     "20356": my_secrets,
     "20243": secrets_menu,
-    "16336": secret_info,
     "18787": secret_delete,
     "6491": exit,
 }
