@@ -17,6 +17,10 @@ class User(mongoengine.Document):
         "collections": "users",
         "indexes": [
             {"fields": ["telegram_id"]},
+            {
+                "fields": ["last_invoked"],
+                "expireAfterSeconds": 7776000,
+            },  # 3 month after last_invoked
         ],
     }
 
@@ -30,9 +34,11 @@ class User(mongoengine.Document):
 
 
 class Secret(mongoengine.Document):
+    identity = mongoengine.StringField(required=True)
     secret = mongoengine.StringField(required=True)
     chat_id = mongoengine.StringField(required=True)
-    user = mongoengine.ReferenceField(User)
+    user = mongoengine.ReferenceField(User, reverse_delete_rule=mongoengine.CASCADE)
+    repository = mongoengine.StringField(default="None", required=False)
     created = mongoengine.DateTimeField(default=datetime.utcnow)
     last_invoked = mongoengine.DateTimeField(default=datetime.utcnow)
 
@@ -40,15 +46,22 @@ class Secret(mongoengine.Document):
         "db_alias": "core",
         "collections": "secrets",
         "indexes": [
-            {"fields": ["secret"]},
+            {"fields": ["identity"]},
+            {
+                "fields": ["last_invoked"],
+                "expireAfterSeconds": 31536000,
+            },  # one year after last_invoked
         ],
     }
 
     @staticmethod
-    def get(secret: str = None) -> User:
-        return Secret.objects(secret=secret).first()
+    def get(identity: str = None) -> User:
+        return Secret.objects(identity=identity).first()
 
     def update(self):
         self.last_invoked = datetime.utcnow
         self.save()
         self.user.update()
+
+
+User.register_delete_rule(Secret, "secrets", mongoengine.PULL)

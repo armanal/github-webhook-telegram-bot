@@ -34,7 +34,6 @@ from asgiref.wsgi import WsgiToAsgi
 from flask import Flask, request, Response
 
 import db
-from db import users
 from tools import markdown_char_escape
 
 # Enable logging
@@ -62,15 +61,16 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def secret(update: Update, context: ContextTypes.DEFAULT_TYPE):
     fields = extract_message_fields(update=update)
     while True:
-        secret = secrets.token_hex(nbytes=20)
-        if users.Secret.get(secret=secret) is None:
+        identity = secrets.token_hex(nbytes=20)
+        if db.Secret.get(identity=identity) is None:
             break
 
-    secret = users.Secret(secret=secret, chat_id=fields["chat_id"])
+    secret = secrets.token_hex(nbytes=20)
+    secret = db.Secret(identity=identity, secret=secret, chat_id=fields["chat_id"])
 
-    user = users.User.get(telegram_id=fields["user_id"])
+    user = db.User.get(telegram_id=fields["user_id"])
     if user is None:
-        user = users.User(telegram_id=fields["user_id"])
+        user = db.User(telegram_id=fields["user_id"])
         user.save()
 
     user.secrets.append(secret)
@@ -82,20 +82,13 @@ async def secret(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         f"Secret:\n||{markdown_char_escape(str(secret.secret))}||\n\n\
-Payload URL: \n{markdown_char_escape(url)}/github?identity={markdown_char_escape(secret.secret)}",
+Payload URL: \n{markdown_char_escape(url)}/github?identity\={markdown_char_escape(secret.identity)}",
         parse_mode=telegram.constants.ParseMode.MARKDOWN_V2,
     )
 
 
-async def send_github(secret_string, data, formatted_data):
-    secret = users.Secret.get(secret=secret_string)
-    if secret is None:
-        return
-
+async def send_github(secret, data, formatted_data):
     token = os.environ.get("TOKEN", None)
-    assert (
-        token is not None
-    ), "set environment variable TOKEN to your telegram bot's token."
     bot = telegram.Bot(token=token)
 
     await bot.send_message(
@@ -166,22 +159,42 @@ async def main() -> None:
 
     @app.route("/github", methods=["POST"])
     async def github():
-        """Handle incoming Telegram updates by putting them into the `update_queue`
-        https://doma.in/github?identity=SECRET
-        """
+        """https://doma.in/github?identity=IDENTITY"""
         content_type = request.headers.get("Content-Type")
+        identity = request.args.get("identity", None)
+
         logger.debug(f"Content-Type : {content_type}")
-        secret = request.args.get("identity", None)
-        logger.debug(f"got secret : {secret}")
+        logger.debug(f"Got Identity : {identity}")
+
+        if identity is None:
+            return "No Identity provided", 400
+
+        secret = db.Secret.get(identity=identity)
         if secret is None:
-            return
+            logger.debug(f"Identity not found.")
+            return "Invalid or unauthorized apikey", 401
 
-        wbh = Webhook(secret=secret)
-        data, formatted = wbh.postreceive(request=request)
+        wbh = Webhook(secret=secret.secret)
+        payload = wbh.postreceive(request=request)
+        if payload is None:
+            logger.debug(f"Hash mismatch.")
+            return "Hash mismatch", 401
+        data, formatted = payload
 
-        await send_github(secret_string=secret, data=data, formatted_data=formatted)
+        repo_url = data["repository"]["html_url"]
+        if secret.repository == "None":
+            secret.repository = repo_url
+        elif secret.repository != repo_url:
+            logger.debug(
+                f"Invalid repository {repo_url}."
+                + f"Recorded repository for this secret {secret.repository}"
+            )
+            return "Invalid repository. Request another secret for your new repo.", 401
+        secret.update()
 
-        return "", 204
+        await send_github(secret=secret, data=data, formatted_data=formatted)
+
+        return "OK", 204
 
     asgi_app = WsgiToAsgi(app)
     webserver = uvicorn.Server(
@@ -197,12 +210,6 @@ async def main() -> None:
         await application.start()
         await webserver.serve()
         await application.stop()
-
-    # app.run(host="0.0.0.0", port=4560)
-
-    # uvicorn main:app --port 4560 --host 0.0.0.0 --workers 1
-    # asgi_app = WsgiToAsgi(app)
-    # uvicorn.run("main:asgi_app", host="0.0.0.0", port=4560, log_level="info")
 
 
 if __name__ == "__main__":
