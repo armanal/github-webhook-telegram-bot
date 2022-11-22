@@ -58,6 +58,7 @@ async def send_github(secret, data, formatted_data):
         chat_id=secret.chat_id,
         text=formatted_data,
         parse_mode=telegram.constants.ParseMode.MARKDOWN_V2,
+        disable_web_page_preview=True,
     )
 
 
